@@ -1,0 +1,3 @@
+App này dùng để marco giúp tự động mua và refresh shop trong game EpicSeven:
++
+
