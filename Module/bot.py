@@ -4,6 +4,12 @@ import logging
 import random
 import time
 from dataclasses import dataclass
+from threading import Event
+
+try:
+    import msvcrt
+except ImportError:
+    msvcrt = None  # type: ignore
 
 from Module.assets import AssetBundle, Template
 from Module.capture import ScreenCapture
@@ -41,13 +47,38 @@ class SecretShopBot:
         self.stats = PurchaseStats()
         self.mouse = WindowsMouseController()
         self.window_activator = WindowActivator(config.window_title_keyword)
+        self._paused = Event()
+        self._paused.set()  # Initially not paused
+
+    def _check_pause_resume(self) -> None:
+        """Kiểm tra phím Q để dừng và R để tiếp tục."""
+        if msvcrt is None:
+            return
+        
+        if msvcrt.kbhit():
+            key = msvcrt.getch()
+            if key == b'q' or key == b'Q':
+                LOGGER.info("Da nhan Q - Dung chuong trinh tam thoi...")
+                self._paused.clear()
+            elif key == b'r' or key == b'R':
+                LOGGER.info("Da nhan R - Tiep tuc chuong trinh...")
+                self._paused.set()
+
+    def _wait_while_paused(self) -> None:
+        """Chờ cho đến khi không còn paused."""
+        while not self._paused.is_set():
+            time.sleep(0.1)
+            self._check_pause_resume()
 
     def run(self) -> None:
         LOGGER.info("Bat dau bot. Su dung Windows native mouse input de click vao game.")
+        LOGGER.info("Nhan Q de dung, nhan R de tiep tuc.")
         scene = self._wait_for_scene()
         LOGGER.info("Da xac dinh duoc MainScene tai %s", scene.frame_rect)
 
         while True:
+            self._check_pause_resume()
+            self._wait_while_paused()
             self._random_idle()
             self._run_single_shop_cycle(scene)
 
