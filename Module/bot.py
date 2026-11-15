@@ -17,7 +17,7 @@ from Module.config import BotConfig
 from Module.geometry import MatchResult, Rect
 from Module.matcher import TemplateMatcher
 from Module.scene import SceneContext, SceneLocator
-from Module.windows_input import WindowActivator, WindowsMouseController
+from Module.windows_input import WindowActivator, WindowsMessageController, WindowsMouseController
 
 
 LOGGER = logging.getLogger("secret_shop_bot")
@@ -45,8 +45,11 @@ class SecretShopBot:
         self.matcher = matcher
         self.scene_locator = scene_locator
         self.stats = PurchaseStats()
-        self.mouse = WindowsMouseController()
         self.window_activator = WindowActivator(config.window_title_keyword)
+        if config.input_mode == "background":
+            self.input_controller = WindowsMessageController(self.window_activator)
+        else:
+            self.input_controller = WindowsMouseController()
         self._paused = Event()
         self._paused.set()  # Initially not paused
 
@@ -71,7 +74,7 @@ class SecretShopBot:
             self._check_pause_resume()
 
     def run(self) -> None:
-        LOGGER.info("Bat dau bot. Su dung Windows native mouse input de click vao game.")
+        LOGGER.info("Bat dau bot. Che do input: %s.", self.config.input_mode)
         LOGGER.info("Nhan Q de dung, nhan R de tiep tuc.")
         scene = self._wait_for_scene()
         LOGGER.info("Da xac dinh duoc MainScene tai %s", scene.frame_rect)
@@ -222,8 +225,9 @@ class SecretShopBot:
             scene.scroll_end.x,
             scene.scroll_end.y,
         )
-        self.window_activator.activate()
-        self.mouse.drag(scene.scroll_start, scene.scroll_end, duration=0.35)
+        if self.config.input_mode != "background":
+            self.window_activator.activate()
+        self.input_controller.drag(scene.scroll_start, scene.scroll_end, duration=0.35)
         time.sleep(self.config.timing.after_scroll_delay)
 
     def _wait_for_scene(self) -> SceneContext:
@@ -259,14 +263,19 @@ class SecretShopBot:
         raise TimeoutError(f"Khong the tim thay template xac nhan: {template.name}")
 
     def _click_match(self, match: MatchResult) -> None:
-        activated = self.window_activator.activate()
+        activated = (
+            False
+            if self.config.input_mode == "background"
+            else self.window_activator.activate()
+        )
         LOGGER.debug(
-            "Click tai tam rect=(%s, %s) | foreground=%s",
+            "Click tai tam rect=(%s, %s) | foreground=%s | mode=%s",
             match.rect.center.x,
             match.rect.center.y,
             activated,
+            self.config.input_mode,
         )
-        self.mouse.click(
+        self.input_controller.click(
             match.rect.center.x,
             match.rect.center.y,
             press_duration=self.config.timing.click_press_duration,

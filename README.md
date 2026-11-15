@@ -202,7 +202,24 @@ Important folders:
 
 ## Notes
 
-- The bot reads the full screen and sends real mouse input on Windows.
+- By default, the bot reads the full screen and sends real mouse input on Windows.
+- To try background input without moving the cursor, set
+  `input_mode="background"` in the `BotConfig` returned by
+  `build_default_config` in `Module/config.py`, for example:
+
+  ```python
+  return BotConfig(
+      paths=PathConfig(Path(root_dir).resolve()),
+      input_mode="background",
+  )
+  ```
+
+- This posts mouse messages to the window whose title contains
+  `window_title_keyword`; it does not activate the window or move the system
+  cursor. Some games and emulators ignore posted mouse messages, so this mode may
+  not work with every rendering/input backend. If it does not work, switch back
+  to the default `foreground` mode. Screen capture still uses the visible
+  desktop, so background input does not make the game hidden.
 - Run the game in a stable position and do not move the window while the bot is working.
 - `main.py` attempts to restart with Administrator permission on Windows if needed.
 - Matching quality depends heavily on the template images and your screen setup.

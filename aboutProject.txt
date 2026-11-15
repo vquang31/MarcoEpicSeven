@@ -1,3 +1,150 @@
-App này dùng để marco giúp tự động mua và refresh shop trong game EpicSeven:
-+
+
+
+Các từ viết tắt:
++ "MysticsMedals" : "MM"
++ "ConvenatBookmarks" : "CB"
+
+App có nhiệm vụ: marco giúp tự động mua Item gồm MysticsMedals(MM), ConvenatBookmarks(CB) và refresh shop trong game:
+App này sẽ phải đọc màn hình của người dùng và thực hiện nhấn chuột (để mua Item và refresh Shop) và kéo chuột (hay scroll) phần shop (vì phần shop của tôi dài) 
+Chương trình sử dụng Python
+Khi refreshShop có thể sẽ không xuất hiện MysticsMedals(MM) và ConvenatBookmark (CB)
+1 lần refresh shop chỉ có thể nhiều nhất 1 Item MysticsMedals(MM) và 1 Item ConvenatBookmark (CB)
+
+
+Lưu ý:
+Các ảnh của tôi có tỉ lệ scale có thể không đúng với tỉ lệ trên scene
+
+----
+Dự án của tôi có các folder:
+* Folder ảnh imagesDetect có nhiệm vụ: Detect hình gồm:
++ Folder Buttons chứa:
+-- BuyCB_Button.png
+-- BuyMM_Button.png
+-- Buy_Button.png (nút trong ShopArea)
+-- ConfirmRefresh_Button.png (nút để xác nhận )
+-- Refresh_Button.png
+
++ Folder frames
+-- CBBuy_Frame.png (hình ảnh ConvenatBookmarks - Item cần mua)
+-- MMBuy_Frame.png (hình ảnh ConvenatBookmarks - Item cần mua)
+
++ Folder frameDetect
+-- image_TopLeft.png (hình ảnh ở góc trái-trên)
+-- image_TopRight.png (hình ảnh ở góc phải-trên)
++ Folder ImageIcon ( Hình ảnh Item cần mua )
+-- CB_Image.png
+-- MM_Image.png
++ Folder ExScenes: (chứa ví dụ về scene)
+-- ExScene.png (Chứa ví dụ về 1 scene App)
+* Folder Module lưu các module cho các nhiệm vụ khác nhau
+* main.py file python chạy chương trình
+-- 
+
+
+----
+
+
+Thông tin của frame: tỉ lệ của frame 16:9
+Cách để xác định frame của App:
+- Tôi sẽ cung cấp 2 image gồm (image_TopRight.png, image_TopLeft.png) để xác định khung(thông số Width và height) của App: 
+từ khoảng cách giữa 2 hình image_TopRight.png và image_TopLeft.png ta sẽ suy ra được Width chiều dài của khung hình
+=> từ đó suy ra được Height chiều cao của khung hình (do App có tỉ lệ khung hình là 16:9)
+
+Cấu trúc frame của App:
+
+MainScene -- ExScene
+
+
+(0,0)
+
+-----------------------------------------------------------------------------> X
+|        _________________________________________________________________________
+|        | [image_TopLeft.png]                               [image_TopRight.png] |
+|        |                                                                        |
+|        |                                                                        |
+|        |                         ____________________________________________   |                                    
+|        |                        |                                            |  |
+|        |                        |            ShopArea                        |  |
+|        |                        |    _________                               |  |
+|        |                        |   |icon_Item|            [Cost Item]       |  |
+|        |                        |   |_________|            [Buy_Button.png]  |  |
+|        |                        |    _________                               |  |
+|        |                        |   |icon_Item|            [Cost Item]       |  |
+|        |                        |   |_________|            [Buy_Button.png]  |  |  
+|        |                        |    _________                               |  |
+|        |                        |   |icon_Item|            [Cost Item]       |  |
+|        |                        |   |_________|            [Buy_Button.png]  |  |  
+|        |                        |    _________                               |  |
+|        |                        |   |icon_Item|            [Cost Item]       |  |
+|        |                        |   |_________|            [Buy_Button.png]  |  |        
+|        |    __________________  |   _________                                |  |
+|        |   |Refresh_Button.png| |   |icon_Item|            [Cost Item]       |  |
+|        |   |__________________| |   |_________|            [Buy_Button.png]  |  |  
+|        |                        |____________________________________________|  |        
+|        |________________________________________________________________________|
+|
+v
+Y
+
+Giải thích:
+để có thể hiểu hơn về cấu trúc bạn có thể xem hình "ExScene.png"
+ShopArea này có thể Lăn chuột
+[Buy_Button.png] : nút để mua Item
+icon_Item: hình ảnh Item (có thể là Item cần mua và Item không cần mua)
+Refresh_Button.png: nút để refresh shop
+[image_TopLeft.png] [image_TopRight.png] : hình ảnh dùng để xác định vị trí MainScene
+
+
+- Chương trình sẽ đọc toàn bộ màn hình theo tốc độ 5 frame/s để xử lý
+Về luồng hoạt động của chương trình này:
+- Chương trình sẽ đọc màn hình ở MainScene:
+-- đọc hình ảnh image_TopLeft.png và image_TopRight.png xác định vị trí của 2 hình ảnh. 
+--> Từ đó xác định được Width = cạnh phải của [image_TopRight.png] - cạnh trái của [image_TopLeft.png] -> Xác định được height của cửa sổ Ứng dụng (width : height = 16:9)
+--> Xác định được Frame của scene
+-- Đọc hình ảnh để tìm "Refresh_Button.png"(thực hiện lưu vị trí của hình ảnh này để thực hiện refresh Shop) -> khi đã tìm được hình ảnh "Refresh_Button.png" từ góc phải trên của hình ảnh "Refresh_Button.png" là (X1,Y1)
+--> Xác định được vị trí để scroll của chuột (X2,Y2) = (X1 + width_Scene, Y1)
+- Main Loop:(thực hiện vĩnh viễn - chỉ dừng khi tắt chương trình) (Lưu ý 1 lần refresh shop chỉ có thể nhiều nhất 1 Item MysticsMedals(MM) và 1 Item ConvenatBookmark (CB) - Có thể dùng biến boolean để kiểm tra đã mua Item yêu cầu hay chưa?)
+-- đợi một khoảng thời gian: random (0,5s - 1s)
+-- Kiểm tra lần 1: 
+    --- Kiểm tra xem trong frame có Item cần mua hay không (hình ảnh lấy ở Folder - ImageIcon)
+        ---- Nếu kiểm tra có Item cần mua (Thực hiện các bước thao tác ở mục <ActionBuyItem>)
+        ---- Nếu không có Item cần mua, thực hiện scroll shop và kiểm tra lần 2
+-- Scroll Shop: 
+    ---Từ vị trí (X2,Y2) thực hiện kéo chuột từ (X2,Y2) đến (X2, Y2 - heigh / 2) (scroll)
+-- Kiểm tra lần 2:
+    --- Kiểm tra giống lần 1
+-- RefreshShop:  Thực hiện các bước thao tác ở mục <RefreshShopAction> để refresh shop và tiếp tục một loop mới
+    
+Lưu ý:
++ Nếu đã mua đủ 2 Item trong một lần refresh thì có thể kết thúc vòng lặp hiện tại và refresh shop bắt đầu vòng mới
++ Chương trình Log trên terminal Số lần Đã mua được MM và CB sau mỗi MainLoop
+
+
+
+
+<ActionBuyItem>
+Các bước mua Item:
+Khi xác định được hình ảnh của Item cần mua
+-Ta xác định Y1 = (vị trí cạnh trên của hình ảnh Item cần mua), Y2 = (vị trí cạnh dưới của hình ảnh Item cần mua)
+-Ta xác định X1 = (vị trí cạnh phải của hình ảnh Item cần mua), X2 = (vị trí cạnh phải của mainScene)
+-> Từ đó ta tìm được BoundingBox có [Buy_Button.png] cần nhấn
+-> Thực hiện đọc hình ảnh và detect Buy_Button.png trong BoundingBox
+-> Thực hiện nhấn chuột và giữa hình Buy_Button.png
+--> Scene sẽ hiển thị Confirm Buy Scene 
+--->> Nếu Item cần mua đang detect được là:
+----  ConvenatBookmarks(CB) thì thực hiện detect ảnh BuyCB_Button.png
+----  MysticsMedals(MM) thì thực hiện detect ảnh BuyMM_Button.png
+----- Sau khi detect được hình ảnh thì nhấn chuột vào giữa hình đã detect
+(Sau khi xác nhận mua thì sẽ ứng dụng sẽ hiển thị lại MainScene)
+</ActionBuyItem>
+
+
+<RefreshShopAction>
+Từ hình ảnh "Refresh_Button.png" detect thực hiện nhấn vào nút Refresh_Button.png
+-> Ứng dụng sẽ hiển thị confirm Scene 
+--> Thực hiện detect ảnh ConfirmRefresh_Button.png 
+---> Thực hiện nhấn vào giữa ConfirmRefresh_Button.png khi đã detect được hình
+Khi nhấn thì Ứng dụng sẽ chuyển về MainScene
+</RefreshShopAction>
+
 

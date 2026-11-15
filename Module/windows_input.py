@@ -23,6 +23,14 @@ SM_CYVIRTUALSCREEN = 79
 SM_XVIRTUALSCREEN = 76
 SM_YVIRTUALSCREEN = 77
 SW_RESTORE = 9
+WM_MOUSEMOVE = 0x0200
+WM_LBUTTONDOWN = 0x0201
+WM_LBUTTONUP = 0x0202
+MK_LBUTTON = 0x0001
+
+
+class POINT(ctypes.Structure):
+    _fields_ = [("x", wintypes.LONG), ("y", wintypes.LONG)]
 
 
 class MOUSEINPUT(ctypes.Structure):
@@ -131,7 +139,7 @@ class WindowActivator:
         self.title_keyword = title_keyword.lower()
 
     def activate(self) -> bool:
-        hwnd = self._find_window()
+        hwnd = self.find_window()
         if not hwnd:
             LOGGER.debug("Khong tim thay cua so co tieu de chua: %s", self.title_keyword)
             return False
@@ -142,7 +150,7 @@ class WindowActivator:
         time.sleep(0.05)
         return True
 
-    def _find_window(self) -> int | None:
+    def find_window(self) -> int | None:
         found: list[int] = []
 
         EnumWindowsProc = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
@@ -163,3 +171,66 @@ class WindowActivator:
 
         user32.EnumWindows(EnumWindowsProc(callback), 0)
         return found[0] if found else None
+
+
+class WindowsMessageController:
+    def __init__(self, window_activator: WindowActivator) -> None:
+        self.window_activator = window_activator
+        user32.ScreenToClient.argtypes = [wintypes.HWND, ctypes.POINTER(POINT)]
+        user32.ScreenToClient.restype = wintypes.BOOL
+        user32.PostMessageW.argtypes = [
+            wintypes.HWND,
+            wintypes.UINT,
+            wintypes.WPARAM,
+            wintypes.LPARAM,
+        ]
+        user32.PostMessageW.restype = wintypes.BOOL
+
+    def click(self, x: int, y: int, press_duration: float = 0.05) -> None:
+        hwnd = self._require_window()
+        self._post_mouse_message(hwnd, WM_MOUSEMOVE, x, y)
+        self._post_mouse_message(hwnd, WM_LBUTTONDOWN, x, y, MK_LBUTTON)
+        try:
+            time.sleep(press_duration)
+        finally:
+            self._post_mouse_message(hwnd, WM_LBUTTONUP, x, y)
+
+    def drag(self, start: Point, end: Point, duration: float = 0.35) -> None:
+        hwnd = self._require_window()
+        self._post_mouse_message(hwnd, WM_MOUSEMOVE, start.x, start.y)
+        self._post_mouse_message(hwnd, WM_LBUTTONDOWN, start.x, start.y, MK_LBUTTON)
+        steps = max(3, int(duration / 0.02))
+        try:
+            for step in range(1, steps + 1):
+                t = step / steps
+                x = round(start.x + (end.x - start.x) * t)
+                y = round(start.y + (end.y - start.y) * t)
+                self._post_mouse_message(hwnd, WM_MOUSEMOVE, x, y, MK_LBUTTON)
+                time.sleep(duration / steps)
+        finally:
+            self._post_mouse_message(hwnd, WM_LBUTTONUP, end.x, end.y)
+
+    def _require_window(self) -> int:
+        hwnd = self.window_activator.find_window()
+        if not hwnd:
+            raise RuntimeError(
+                f"Khong tim thay cua so co tieu de chua: {self.window_activator.title_keyword}"
+            )
+        return hwnd
+
+    @staticmethod
+    def _post_mouse_message(
+        hwnd: int,
+        message: int,
+        screen_x: int,
+        screen_y: int,
+        key_state: int = 0,
+    ) -> None:
+        point = POINT(screen_x, screen_y)
+        if not user32.ScreenToClient(hwnd, ctypes.byref(point)):
+            error_code = ctypes.get_last_error()
+            raise OSError(error_code, f"Khong doi duoc toa do cua so (WinError {error_code}).")
+        coordinates = ((point.y & 0xFFFF) << 16) | (point.x & 0xFFFF)
+        if not user32.PostMessageW(hwnd, message, key_state, coordinates):
+            error_code = ctypes.get_last_error()
+            raise OSError(error_code, f"Khong gui duoc thong diep chuot (WinError {error_code}).")

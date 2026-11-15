@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Literal
 
 
 @dataclass(frozen=True)
@@ -88,6 +89,7 @@ class BotConfig:
     scene_aspect_height: int = 9
     app_always_top_left: bool = True
     window_title_keyword: str = "Epic Seven"
+    input_mode: Literal["foreground", "background"] = "background"
     debug: bool = False
 
 
